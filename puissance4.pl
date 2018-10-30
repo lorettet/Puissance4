@@ -1,283 +1,333 @@
-max(X,Y,Y) :- Y>X, !.
-max(X,Y,X). 
+%Tableau qui gÃ¨re par colonnes le Puissance 4
+% --> 7 Colonnes de 6 Lignes
+initialiser([['_','_','_','_','_','_'],
+	       ['_','_','_','_','_','_'],
+	       ['_','_','_','_','_','_'],
+	       ['_','_','_','_','_','_'],
+	       ['_','_','_','_','_','_'],
+	       ['_','_','_','_','_','_'],
+		   ['_','_','_','_','_','_']]).
 
-% Fonction qui permet d'ajouter un élément en fin de liste
-ajoutFin(X,[],[X]).
-ajoutFin(X,[Y|L1],[Y|L2]):- ajoutFin(X,L1,L2).
+afficher(X):-afficherLigne(X,0).
 
-finListe([], _).
-finListe(L, E):- last(L,E).
+%I = Ligne
+afficherLigne(_,6).
+afficherLigne(X,I):-afficherCellule(X,I,0), nl, I2 is I+1, afficherLigne(X,I2).
 
-% Fonction qui renvoie une sous-liste à partir d'une liste L
-/* Paramètres : S sous-liste, L liste */
-prefix(P,L):-append(P,_,L).
-sublist(S,L):-prefix(S,L).
-sublist(S,[_|T]):-sublist(S,T).
+%I = Ligne // J = Colonne
+afficherCellule(_,_,7).
+afficherCellule(X,I,J):-nth0(J,X,A), nth0(I,A,B), write(B), write(' '),J2 is J+1, afficherCellule(X,I,J2).
 
-% Fonction qui retourne la longueur d'une liste
-/* Paramètres : L liste, N longueur de la liste */
-longueur([],0).
-longueur([_|L],N):- longueur(L,N1),
-					N is N1+1.
+lancer:- initialiser(X),afficher(X),!.
 
-% Fonction qui renvoie le nième élément d'une liste 
-/* Paramètres : N index de l'élement qu'on veut récupérer, L liste, X élément retourné */
-nthElem(N, L, []):- longueur(L, N1), N1 < N.
-nthElem(N, L, X):- nth1(N, L, X).				
+%%%%%% Verification win %%%%%%%
+% winner si une colonne, un ligne ou une diagn=onal gagner
+winner(B,P):- winnerVert(B,P),!.
+winner(B,P):- winnerHor(_,_,B,P),!.
+winner(B,P):- winnerDiagDes(_,_,B,P),!.
+winner(B,P):- winnerDiagAsc(_,_,B,P),!.
+winner(B,'Draw'):- fullBoard(B).
 
-% Fonction qui enregistre un coup joué dans la grille
-/* Paramètres : N numéro de la colonne dans laquelle J joue, G grille, J joueur, G' nouvelle grille */		
-enregistrerCoup(1, [L|G], x, _, I):- longueur(L,N), N >= 6, write('Coup Invalide\n'), jouerCoupX(I).
-enregistrerCoup(1, [L|G], o, _, I):- longueur(L,N), N >= 6, write('Coup Invalide\n'), jouerCoupO(I).
-enregistrerCoup(1, [L|G], J, F, I):- longueur(L,N), N < 6, ajoutFin(J,L,M), F=[M|G].
-enregistrerCoup(N, [L|G], x, _, I):- N > 7, write('Coup Invalide\n'), jouerCoupX(I).
-enregistrerCoup(N, [L|G], o, _, I):- N > 7, write('Coup Invalide\n'), jouerCoupO(I).
-enregistrerCoup(N, [T|X], J, [T|G], I):- 	N > 0,
-										N1 is N-1,
-										enregistrerCoup(N1, X, J, G, I).
-					
-enregistrerCoupJoueur(1, [L|G], x, _, I):- longueur(L,N), N >= 6, write('Coup Invalide\n'), jouerCoupJoueur(I).
-enregistrerCoupJoueur(1, [L|G], J, F, I):- longueur(L,N), N < 6, ajoutFin(J,L,M), F=[M|G].
-enregistrerCoupJoueur(N, [L|G], x, _, I):- N > 7, write('Coup Invalide\n'), jouerCoupJoueur(I).	
-enregistrerCoupJoueur(N, [T|X], J, [T|G], I):- 	N > 0,
-										N1 is N-1,
-										enregistrerCoupJoueur(N1, X, J, G, I).
+member(X, [X|_]).
+member(X, [_|Q]):- member(X,Q).
 
-enregistrerCoupIA(1, [L|G], J, F, I):- longueur(L,N), N < 6, ajoutFin(J,L,M), F=[M|G].
-enregistrerCoupIA(N, [T|X], J, [T|G], I):- 	N > 0,
-										N1 is N-1,
-										enregistrerCoupIA(N1, X, J, G, I).
-% Condition de victoire verticale : 4 jetons les uns après les autres sur une même colonne
-/* Paramètres : G grille, J joueur */										
-finJeuVert([L|_],J):- sublist([J,J,J,J], L),!.
-finJeuVert([_|G],J):- finJeuVert(G,J).
+% verifie si le board est plein
+fullBoard([]).
+fullBoard([T|Q]):- not(member('_',T)), fullBoard(Q).
 
-% Condition de victoire horizontale : 4 jetons les uns après les autres sur une même ligne
-/* Paramètres : N numéro de la ligne à partir duquel on traite, G grille, J joueur */
-finJeuHor(N, G, J):- maplist(nthElem(N), G, L), 
-					 sublist([J,J,J,J],L),!.
-finJeuHor(N, G, J):- N > 0,
-					 N1 is N-1,
-					 finJeuHor(N1, G, J).
+% test chaque diagonal descendente
+winnerDiagDes(ColNum,LigNum,Board,P):-  getDiagDes(Board,ColNum,LigNum,A,B,C,D),valAllEquals(A,B,C,D,P).
 
-finJeuHor(G,J):- finJeuHor(6, G, J).				 
+% A,B,C,D sont les 4 elems de la diagonal descendente commencant Ã  ColNum, Lignum (point suppÃ©rieur gauche)
+getDiagDes(Board,ColNum,LigNum,A,B,C,D) :- nth0(ColNum,Board,Col),nth0(LigNum,Col,A),
+    										ColNum2 is ColNum+1, LigNum2 is LigNum+1, nth0(ColNum2,Board,Col2), nth0(LigNum2,Col2,B),
+    										ColNum3 is ColNum2+1, LigNum3 is LigNum2+1, nth0(ColNum3,Board,Col3), nth0(LigNum3,Col3,C),
+    										ColNum4 is ColNum3+1, LigNum4 is LigNum3+1, nth0(ColNum4,Board,Col4), nth0(LigNum4,Col4,D).
 
-uneFinDiag(G,D,J,0):- sublist([J,J,J,J],D).
-uneFinDiag(G,D,J,N):- N > 0,
-					  maplist(nthElem(N), G, L),
-					  nthElem(N,L,E),
-					  N1 is N-1,
-					  uneFinDiag(G,[E|D],J,N1).
+% test chaque diagonal ascendente
+winnerDiagAsc(ColNum,LigNum,Board,P):- getDiagAsc(Board,ColNum,LigNum,A,B,C,D),valAllEquals(A,B,C,D,P).
 
-uneFinDiag(G,J):- uneFinDiag(G,[],J,6).
+% A,B,C,D sont les 4 elems de la diagonal ascendente commencant Ã  ColNum, Lignum4 (point infÃ©rieur gauche)
+getDiagAsc(Board,ColNum,LigNum4,A,B,C,D) :- nth0(ColNum,Board,Col),nth0(LigNum4,Col,A),
+    										ColNum2 is ColNum+1, LigNum3 is LigNum4-1, nth0(ColNum2,Board,Col2), nth0(LigNum3,Col2,B),
+    										ColNum3 is ColNum2+1, LigNum2 is LigNum3-1, nth0(ColNum3,Board,Col3), nth0(LigNum2,Col3,C),
+    										ColNum4 is ColNum3+1, LigNum1 is LigNum2-1, nth0(ColNum4,Board,Col4), nth0(LigNum1,Col4,D).
 
-autreFinDiag(G,D,J,0):- sublist([J,J,J,J],D).
-autreFinDiag(G,D,J,N):- N > 0,
-					    maplist(nthElem(N), G, L),
-						N2 is 7-N,
-						nthElem(N2,L,E),
-					    N1 is N-1,
-					    autreFinDiag(G,[E|D],J,N1).
+% Verifie si les 4 element sont Ã©gaux
+valAllEquals(A,B,C,D,P) :- A\=='_', A=P,A=B,B=C,C=D.
 
-autreFinDiag(G,J):- autreFinDiag(G,[],J,6).
+% test chaque ligne
+winnerHor(ColNum,LigNum,Board,P) :- getHor(Board,ColNum,LigNum,A,B,C,D), valAllEquals(A,B,C,D,P),!.
 
+% recupÃ¨re les 4 jetons d'un ligne LigNum, commenÃ§ant colonne ColNum
+getHor(Board,ColNum,LigNum,A,B,C,D):-nth0(ColNum,Board,Col),nth0(LigNum,Col,A),
+    										ColNum2 is ColNum+1, nth0(ColNum2,Board,Col2), nth0(LigNum,Col2,B),
+    										ColNum3 is ColNum2+1, nth0(ColNum3,Board,Col3), nth0(LigNum,Col3,C),
+    										ColNum4 is ColNum3+1, nth0(ColNum4,Board,Col4), nth0(LigNum,Col4,D).
+    
+% test chaque colonne
+winnerVert([T|_],P):-vertwins(T,P).
+winnerVert([_|Q],P):-winnerVert(Q,P).
 
-finJeuDiag(G,N,X,J):- autreFinDiag(X,J),!.
-finJeuDiag(G,N,X,J):- uneFinDiag(X,J),!.
-finJeuDiag(G,N,X,J):- N < 7,
-					  maplist(nthElem(N), G, L),
-					  N1 is N+1,
-					  finJeuDiag(G,N1,[L|X],J).
+% Conditions de rÃ©ussite sur une colonne
+vertwins(C,P):- C=[_,_,P,P,P,P], P \== '_'.
+vertwins(C,P):- C=[_,P,P,P,P,_], P \== '_'.
+vertwins(C,P):- C=[P,P,P,P,_,_], P \== '_'.
 
-finJeuDiag(G,J):- finJeuDiag(G,1,[],J).
+move(Board,NumC,NewBoard,Player):- nth0(NumC,Board,Colonne), getLineNumber(Colonne,0,I), I\=='-1', changeElem(Colonne, Player, I, NewColonne) , changeElem(Board, NewColonne, NumC, NewBoard).
 
-% Définition et test des conditions de fin de jeu
-/* Paramètres : G grille, J joueur */
-finJeu(G, J):- finJeuVert(G,x), J=x.
-finJeu(G, J):- finJeuVert(G,o), J=o.
-finJeu(G, J):- finJeuHor(G,x), J=x.
-finJeu(G, J):- finJeuHor(G,o), J=o.
-finJeu(G, J):- finJeuDiag(G,x), J=x.
-finJeu(G, J):- finJeuDiag(G,o), J=o.
+changeElem([_|Q], Val, 0, [Val|Q]).
+changeElem([H|Q1],Val,Index,[H|Q2]):- IndexI is Index-1, changeElem(Q1,Val,IndexI,Q2),!.
 
-% Affichage du gagnant
-/* Paramètres : J joueur */
-gagnant(J):-write('Le Joueur '), write(J), write(' a gagné !').
+getLineNumber(['_'],FirstIndex,Index):- Index is FirstIndex, !. 
+getLineNumber([X|_],FirstIndex,Index):- X\=='_', Index is FirstIndex-1, !.  
+getLineNumber(['_'|Q],FirstIndex, Index):- IndexI is FirstIndex+1 , getLineNumber(Q,IndexI,Index).
 
+outputWinner(P):-nl,write('Le joueur '),write(P),write(' gagne!').
 
-/* Paramètres : G grille*/
-jouerCoupX(G):-finJeu(G,J), gagnant(J),!.
-jouerCoupO(G):-finJeu(G,J), gagnant(J),!.
-jouerCoupX(G):- write('Joueur x, entrez un numéro de colonne : '),
-				read(N), enregistrerCoup(N,G, x, X, G),
-				afficherGrille(X),
-				write('\n'),
-				jouerCoupO(X).
-jouerCoupO(G):- write('Joueur o, entrez un numéro de colonne : '),
-				read(N), enregistrerCoup(N,G, o, X, G),
-				afficherGrille(X),
-				write('\n'),
-				jouerCoupX(X).
+endOfGame(B):-winner(B,'Draw'),write("EgalitÃ©!").
+endOfGame(B):-winner(B,P),outputWinner(P).
 
-% Lancement du jeu : grille de départ de 6*7 (vide). C'est le joueur 'o' qui commence, suivi par x, jusqu'à ce que l'un des deux gagne [ou GRILLE PLEINE]
-jouer:- jouerCoupO([[],[],[],[],[],[],[]]).
+%%%% IA Randoms VS IA Random %%%%
+% IA 1 joue et donne la main Ã  IA 2
+playIARandVSIA2Rand(B):- endOfGame(B),!.
+playIARandVSIA2Rand(B):- iaRandom(B,M),move(B,M,NewB,'x'),nl,afficher(NewB),playIA2RandVSIARand(NewB).
+% IA 2 joue et donne la main ) IA 1
+playIA2RandVSIARand(B):- endOfGame(B),!.
+playIA2RandVSIARand(B):- iaRandom(B,Move),move(B,Move,NewB,'o'),nl,afficher(NewB),playIARandVSIA2Rand(NewB).
 
-%Un coup gagant est un coup qui mene à un état de jeu ou le joueur est vainqueur
-coupGagnant(C,G,J):- enregistrerCoupIA(1,G,J,N,G), finJeu(N,J), C=1.
-coupGagnant(C,G,J):- enregistrerCoupIA(2,G,J,N,G), finJeu(N,J), C=2.
-coupGagnant(C,G,J):- enregistrerCoupIA(3,G,J,N,G), finJeu(N,J), C=3.
-coupGagnant(C,G,J):- enregistrerCoupIA(4,G,J,N,G), finJeu(N,J), C=4.
-coupGagnant(C,G,J):- enregistrerCoupIA(5,G,J,N,G), finJeu(N,J), C=5.
-coupGagnant(C,G,J):- enregistrerCoupIA(6,G,J,N,G), finJeu(N,J), C=6.
-coupGagnant(C,G,J):- enregistrerCoupIA(7,G,J,N,G), finJeu(N,J), C=7.
+playIARandVSIARand:- initialiser(B),playIARandVSIA2Rand(B).
 
-%Un coup perdant est un coup qui permet à l'adversaire de gagner
-coupPerdantIA(1,G):- enregistrerCoupIA(1,G,o,N,G), coupGagnant(D,N,x).
-coupPerdantIA(2,G):- enregistrerCoupIA(2,G,o,N,G), coupGagnant(D,N,x).
-coupPerdantIA(3,G):- enregistrerCoupIA(3,G,o,N,G), coupGagnant(D,N,x).
-coupPerdantIA(4,G):- enregistrerCoupIA(4,G,o,N,G), coupGagnant(D,N,x).
-coupPerdantIA(5,G):- enregistrerCoupIA(5,G,o,N,G), coupGagnant(D,N,x).
-coupPerdantIA(6,G):- enregistrerCoupIA(6,G,o,N,G), coupGagnant(D,N,x).
-coupPerdantIA(7,G):- enregistrerCoupIA(7,G,o,N,G), coupGagnant(D,N,x).
+%%%% Joueur vs Joueur %%%
+playPlayerVSPlayer(B,_,_):-winner(B,P),outputWinner(P),!.
+playPlayerVSPlayer(B,P,P2):-player(B,Move), move(B,Move,NewB,P),nl,afficher(NewB),playPlayerVSPlayer(NewB,P2,P).
 
-jouerCoupJoueur(G):-finJeu(G,J), gagnant(J),!.
-jouerIA(G):-finJeu(G,J), gagnant(J),!.
+% lance une partie pvp
+playPvP:-initialiser(B),playPlayerVSPlayer(B,'x','o').
 
-%Si un coup permet de gagner il faut le jouer.
-jouerIA(G):-   coupGagnant(C,G,o), enregistrerCoupIA(C,G,o,X,G),
-			   afficherGrille(X),
-			   write('\n'),
-			   jouerCoupJoueur(X).
+%%%% Joueur vs IA Random %%%%
+player(B,M):-read(M),moves(L,B),member(M,L),!.
+player(B,M):-nl,write('Move impossible, play again'),player(B,M).
 
-%Si un coup permet a l'adversaire de gagner on se défend(coup défensif).
-jouerIA(G):-   coupGagnant(C,G,x), enregistrerCoupIA(C,G,o,X,G),
-			   afficherGrille(X),
-			   write('\n'),
-			   jouerCoupJoueur(X).
+% donne un move alÃ©atoire parmis les moves possibles
+iaRandom(B,M):- moves(L,B), random_member(M,L).
 
-jouerIA(0, G):- write('Pas de coup trouvé').
+% joue le tour du joueur et donne la main Ã  l ia
+playPlayerVSIARandom(B):-endOfGame(B).
+playPlayerVSIARandom(B):- player(B,M),move(B,M,NewB,'x'),nl,afficher(NewB),playIARandomVSPlayer(NewB).
+% joue le tour de l'ia et donne la main au joueur
+playIARandomVSPlayer(B):- endOfGame(B).
+playIARandomVSPlayer(B):- iaRandom(B,Move),move(B,Move,NewB,'o'),nl,afficher(NewB),playPlayerVSIARandom(NewB).
+
+% lance une partie player vs ia random
+playPvIARa:-initialiser(B),playPlayerVSIARandom(B).
+
+% Better IA (TODO maxmin)
+% On travaille sur des Record=[Move,Value]. Si NewValue > OldValue, alors on renvoie le nouveau record, sinon on renvoi l'ancien
+update(_,NewValue,[OldMove,OldValue],[OldMove,OldValue]):-NewValue=<OldValue,!.
+update(NewMove,NewValue,[_,OldValue],[NewMove,NewValue]):-NewValue>OldValue.
+
+%TODO almost done, man maxmin
+evaluateAndChoose(_,[],_,_,_,Record,Record).
+evaluateAndChoose(Player,[Move|Moves],Board,D,MaxMin,Record,Best):-	
+    move(Board,Move,Newboard,Player),
+    %minmax(D,NewBoard,MaxMin,MoveX,Value),
+    random(0,13,Value), % a retirÃ© lorsquon mettera minmax
+    update(Move,Value,Record,Record1),
+    evaluateAndChoose(Player,Moves,Board,D,MaxMin,Record1,Best).
+
+% renvoieun move garce Ã  evaluate and choose
+betterIA(B,M,Player):-moves(Moves,B),evaluateAndChoose(Player,Moves,B,4,1,[0,0],[M,_]).
+
+% Better IA joue et renvoie la main a IA Random
+playBetterIAVSIARand(B):-winner(B,P),outputWinner(P),!.
+playBetterIAVSIARand(B):- betterIA(B,M,'x'),move(B,M,NewB,'x'),nl,afficher(NewB),playIARandVSBetterIA(NewB).
+% IA Random joue et donne la main Ã  Better IA
+playIARandVSBetterIA(B):- winner(B,P),outputWinner(P),!.
+playIARandVSBetterIA(B):- iaRandom(B,Move),move(B,Move,NewB,'o'),nl,afficher(NewB),playBetterIAVSIARand(NewB).
+
+% lance une partie entre betterIA et IA Random
+playBetIAVSIARa:- initialiser(B),playBetterIAVSIARand(B).
 
 
-jouerIA(C, G):- enregistrerCoupIA(C,G,o,X,G),
-			    afficherGrille(X),
-			    write('\n'),
-			    jouerCoupJoueur(X).
+% Liste qui va stocker les numeros de colonne oÃ¹ le joueur peut jouer
+possibleMove(NumC,B) :- nth0(NumC,B,Col),not(pleine(Col)).
+moves(L,B) :- setof(X,possibleMove(X,B),L).
 
-espaceRestant(1, [L|G], E, L):- longueur(L,N2), N3 is 6-N2, E=N3.
-espaceRestant(N, [T|X], E, L):- N > 0,
-								N1 is N-1,
-								espaceRestant(N1, X, E, L).
-									
-%Si on a pas de coup immédiat on fait un coup au centre ou au plus près possible pour une victoire possible en verticale.
-jouerIA(G):- espaceRestant(4,G,E,L), finListe(L,o), E > 3, not(coupPerdantIA(4,G)), jouerIA(4,G).
-jouerIA(G):- espaceRestant(5,G,E,L), finListe(L,o), E > 3, not(coupPerdantIA(5,G)), jouerIA(5,G).
-jouerIA(G):- espaceRestant(3,G,E,L), finListe(L,o), E > 3, not(coupPerdantIA(3,G)), jouerIA(3,G).
-jouerIA(G):- espaceRestant(6,G,E,L), finListe(L,o), E > 3, not(coupPerdantIA(6,G)), jouerIA(6,G).
-jouerIA(G):- espaceRestant(2,G,E,L), finListe(L,o), E > 3, not(coupPerdantIA(2,G)), jouerIA(2,G).
-jouerIA(G):- espaceRestant(7,G,E,L), finListe(L,o), E > 3, not(coupPerdantIA(7,G)), jouerIA(7,G).
-jouerIA(G):- espaceRestant(1,G,E,L), finListe(L,o), E > 3, not(coupPerdantIA(1,G)), jouerIA(1,G).
+% evalue si une colonne est plein ou non
+pleine([]).
+pleine([T|Q]):-T\=='_',pleine(Q).
 
-%Sinon jouer au plus près du centre quand même.
-jouerIA(G):- jouerIA(4,G),not(coupPerdantIA(4,G)).
-jouerIA(G):- jouerIA(5,G),not(coupPerdantIA(5,G)).
-jouerIA(G):- jouerIA(3,G),not(coupPerdantIA(3,G)).
-jouerIA(G):- jouerIA(6,G),not(coupPerdantIA(6,G)).
-jouerIA(G):- jouerIA(2,G),not(coupPerdantIA(2,G)).
-jouerIA(G):- jouerIA(7,G),not(coupPerdantIA(7,G)).
-jouerIA(G):- jouerIA(1,G),not(coupPerdantIA(1,G)).
+vert3(B,Player,Id, NumCol,NumL):- nth0(NumCol,B,Col), nth0(NumL,Col,Head),Head==Player,
+                                        NumL0 is NumL-1, nth0(NumL0,Col,X0),X0=='_',
+    									NumL1 is NumL+1, nth0(NumL1,Col,X1),X1==Player,
+                                        NumL2 is NumL1+1, nth0(NumL2,Col,X2),X2==Player,
+                                        (NumL2==5;(NumL3 is NumL2+1, nth0(NumL3,Col,X3),X3\==Player)),
+                                        Id is 100+NumCol*10+NumL.
 
-%Déblocage de situation
-jouerIA(G):- jouerIA(4,G).
-jouerIA(G):- jouerIA(5,G).
-jouerIA(G):- jouerIA(3,G).
-jouerIA(G):- jouerIA(6,G).
-jouerIA(G):- jouerIA(2,G).
-jouerIA(G):- jouerIA(7,G).
-jouerIA(G):- jouerIA(1,G).
-jouerIA(G):- jouerIA(0,G).
+vert2(B,Player,Id, NumCol,NumL):- nth0(NumCol,B,Col), nth0(NumL,Col,Head),Head==Player,
+                                        NumL0 is NumL-1, nth0(NumL0,Col,X0),X0=='_',
+    									NumL1 is NumL+1, nth0(NumL1,Col,X1),X1==Player,
+                                        (NumL1==5;(NumL2 is NumL1+1, nth0(NumL2,Col,X2),X2\==Player)),
+                                        Id is 100+NumCol*10+NumL.
 
-jouerCoupJoueur(G):- write('Joueur x, entrez un numéro de colonne : '),
-				read(N), enregistrerCoupJoueur(N,G, x, X, G),
-				afficherGrille(X),
-				write('\n'),
-				jouerIA(X).
+hor3Left(B,Player,Id,NumCol,NumL):- nth0(NumCol,B,Col), nth0(NumL,Col,Head),Head==Player,
+                NumCol0 is NumCol-1, nth0(NumCol0,B,Col0), nth0(NumL,Col0,X0),X0=='_',
+    			NumCol1 is NumCol+1, nth0(NumCol1,B,Col1), nth0(NumL,Col1,X1),X1==Player,
+                NumCol2 is NumCol1+1, nth0(NumCol2,B,Col2), nth0(NumL,Col2,X2),X2==Player,
+                (NumCol2==6;(NumCol3 is NumCol2+1, nth0(NumCol3,B,Col3), nth0(NumL,Col3,X3),X3\==Player)),
+                Id is 200+NumCol*10+NumL.
 
-lancerIA:- jouerIA([[],[],[],[],[],[],[]]).
+hor3Right(B,Player,Id,NumCol,NumL):- nth0(NumCol,B,Col), nth0(NumL,Col,Head),Head==Player,
+                (NumCol==0;(NumCol0 is NumCol-1, nth0(NumCol0,B,Col0), nth0(NumL,Col0,X0),X0\==Player)),
+    			NumCol1 is NumCol+1, nth0(NumCol1,B,Col1), nth0(NumL,Col1,X1),X1==Player,
+                NumCol2 is NumCol1+1, nth0(NumCol2,B,Col2), nth0(NumL,Col2,X2),X2==Player,
+                (NumCol3 is NumCol2+1, nth0(NumCol3,B,Col3), nth0(NumL,Col3,X3),X3=='_'),
+                Id is 200+NumCol*10+NumL.
 
-enregistrerCoupArbre(1, [L|G], J, [[J|L]|G]):- longueur(L,N), N < 6.
-enregistrerCoupArbre(N, [T|X], J, [T|G]):- 	N > 0,
-										N1 is N-1,
-										enregistrerCoupArbre(N1, X, J, G).
-% Evaluation de la grille de jeu
-/* Paramètres : G grille, J joueur */
-evalVert([], _, P, X):- X=P, write(fini).										
-evalVert([L|G],J, P, X):- 	sublist([J,J,J,J], L),
-							evalVert(G, J, P, 4, X).
-evalVert([L|G],J, P, X):- 	sublist([J,J,J], L),
-							evalVert(G, J, P, 3, X).
-evalVert([L|G],J, P, X):- 	sublist([J,J], L),
-							evalVert(G, J, P, 2, X).
-evalVert([L|G],J, P, X):- evalVert(G, J, P, 1, X).
-evalVert(G,J, P1, P2, X):- 	max(P1, P2, P),
-							evalVert(G, J, P, X).
-evalVert(G, J, X):- evalVert(G,J, 0, 1, X).
+hor2Left(B,Player,Id,NumCol,NumL):- nth0(NumCol,B,Col), nth0(NumL,Col,Head),Head==Player,
+                NumCol0 is NumCol-1, nth0(NumCol0,B,Col0), nth0(NumL,Col0,X0),X0=='_',
+    			NumCol1 is NumCol+1, nth0(NumCol1,B,Col1), nth0(NumL,Col1,X1),X1==Player,
+                (NumCol1==6;(NumCol2 is NumCol1+1, nth0(NumCol2,B,Col2), nth0(NumL,Col2,X2),X2\==Player)),
+                Id is 200+NumCol*10+NumL.
 
-/* Paramètres : N numéro de la ligne à partir duquel on traite, G grille, J joueur */
-evalHor(_,[],J,P):- write(fini).
-evalHor(N, G, J, P):- maplist(nthElem(N), G, L), 
-					 sublist([J,J,J,J],L),
-					 evalHor(N, G, J, P, 4).
-evalHor(N, G, J, P):- maplist(nthElem(N), G, L), 
-					 sublist([J,J,J],L),
-					 evalHor(N, G, J, P, 3).
-evalHor(N, G, J, P):- maplist(nthElem(N), G, L), 
-					 sublist([J,J],L),
-					 evalHor(N, G, J, P, 2).
-evalHor(N, G, J, P):- maplist(nthElem(N), G, L), 
-					 sublist([J],L),
-					 evalHor(N, G, J, P, 1).
-evalHor(N, G, J, P1, P2):- N > 0,
-					 N1 is N-1,
-					 write(toto),
-					 max(P1, P2, P),
-					 evalHor(N1, G, J, P),
-					 write(P).
-evalHor(G,J,P):- evalHor(6, G, J, 0, 1).
+hor2Right(B,Player,Id,NumCol,NumL):- nth0(NumCol,B,Col), nth0(NumL,Col,Head),Head==Player,
+                (NumCol==0;(NumCol0 is NumCol-1, nth0(NumCol0,B,Col0), nth0(NumL,Col0,X0),X0\==Player)),
+    			NumCol1 is NumCol+1, nth0(NumCol1,B,Col1), nth0(NumL,Col1,X1),X1==Player,
+                NumCol2 is NumCol1+1, nth0(NumCol2,B,Col2), nth0(NumL,Col2,X2),X2=='_',
+                Id is 200+NumCol*10+NumL.
 
-evalGrille(G, J, X) :- evalHor(G,J,P1),
-					evalVert(G, J, P2),	
-					max(P1,P2, X).								
-										
-/* Paramètres : G grille, J joueur, P profondeur, A arbre obtenu */
-tracerArbre(G, J, 0, A).
-tracerArbre(G, J, P, A):- P > 0,
-					      P1 is P-1,
-						  tracerBranche(G, J, P1, A, 7).
+%Attention aux doublons !!!
+diagDesc3Left(B,Player,Id,NumCol,NumL):- nth0(NumCol,B,Col), nth0(NumL,Col,Head),Head==Player,
+               NumCol0 is NumCol-1, NumL0 is NumL-1, nth0(NumCol0,B,Col0), nth0(NumL0,Col0,X0),X0=='_',
+    			NumCol1 is NumCol+1, NumL1 is NumL+1, nth0(NumCol1,B,Col1), nth0(NumL1,Col1,X1),X1==Player,
+                NumCol2 is NumCol1+1, NumL2 is NumL1+1, nth0(NumCol2,B,Col2), nth0(NumL2,Col2,X2),X2==Player,
+                ((NumCol2==6); (NumL2==5);(NumCol3 is NumCol2+1, NumL3 is NumL2+1, nth0(NumCol3,B,Col3), nth0(NumL3,Col3,X3),X3\==Player)),
+                Id is 300+NumCol*10+NumL.
 
-tracerBranche(G, J, P, A, 1).						  
-tracerBranche(G, x, P, A, N):- N > 0,
-							   N1 is N-1,
-							   enregistrerCoupArbre(N, G, x, X), 
-							   tracerArbre(X, o, P, A),
-							   tracerBranche(G, x, P, A, N1).			
-tracerBranche(G, o, P, A, N):- N > 0,
-							   N1 is N-1,
-							   enregistrerCoupArbre(N, G, o, X), 
-							   tracerArbre(X, x, P, A),
-							   tracerBranche(G, o, P, A, N1).
-afficherGrille(_,0).							   
-afficherGrille(G, N):-	 N > 0,
-						N1 is N-1,
-						maplist(nthElem(N), G, L),
-						afficherListe(L),
-						write('\n'),
-						afficherGrille(G, N1).
+diagDesc3Right(B,Player,Id,NumCol,NumL):- nth0(NumCol,B,Col), nth0(NumL,Col,Head),Head==Player,
+                ((NumCol==0); (NumL==0);(NumCol0 is NumCol-1, NumL0 is NumL-1, nth0(NumCol0,B,Col0), nth0(NumL0,Col0,X0),X0\==Player)),
+    			NumCol1 is NumCol+1, NumL1 is NumL+1, nth0(NumCol1,B,Col1), nth0(NumL1,Col1,X1),X1==Player,
+                NumCol2 is NumCol1+1, NumL2 is NumL1+1, nth0(NumCol2,B,Col2), nth0(NumL2,Col2,X2),X2==Player,
+                NumCol3 is NumCol2+1, NumL3 is NumL2+1, nth0(NumCol3,B,Col3), nth0(NumL3,Col3,X3),X3=='_',
+                Id is 300+NumCol*10+NumL.
 
-afficherGrille(G):- afficherGrille(G,6).
- 
-afficherListe([]):- write('|').
-afficherListe([E|L]):-  write('|'), 
-						afficherElement(E),
-						afficherListe(L).
-afficherElement([]):- write(' '),!.
-afficherElement(E):- write(E).
+diagDesc2Left(B,Player,Id,NumCol,NumL):- nth0(NumCol,B,Col), nth0(NumL,Col,Head),Head==Player,
+                NumCol0 is NumCol-1, NumL0 is NumL-1, nth0(NumCol0,B,Col0), nth0(NumL0,Col0,X0),X0=='_',
+    			NumCol1 is NumCol+1, NumL1 is NumL+1, nth0(NumCol1,B,Col1), nth0(NumL1,Col1,X1),X1==Player,
+                ((NumCol1==6); (NumL1==5);(NumCol2 is NumCol1+1, NumL2 is NumL1+1, nth0(NumCol2,B,Col2), nth0(NumL2,Col2,X2),X2\==Player)),
+                Id is 300+NumCol*10+NumL.
+
+diagDesc2Right(B,Player,Id,NumCol,NumL):- nth0(NumCol,B,Col), nth0(NumL,Col,Head),Head==Player,
+                ((NumCol==0); (NumL==0);(NumCol0 is NumCol-1, NumL0 is NumL-1, nth0(NumCol0,B,Col0), nth0(NumL0,Col0,X0),X0\==Player)),
+    			NumCol1 is NumCol+1, NumL1 is NumL+1, nth0(NumCol1,B,Col1), nth0(NumL1,Col1,X1),X1==Player,
+                NumCol2 is NumCol1+1, NumL2 is NumL1+1, nth0(NumCol2,B,Col2), nth0(NumL2,Col2,X2),X2=='_',
+                Id is 300+NumCol*10+NumL.
+
+diagMont3Left(B,Player,Id,NumCol,NumL):- nth0(NumCol,B,Col), nth0(NumL,Col,Head),Head==Player,
+                NumCol0 is NumCol-1, NumL0 is NumL+1, nth0(NumCol0,B,Col0), nth0(NumL0,Col0,X0),X0=='_',
+    			NumCol1 is NumCol+1, NumL1 is NumL-1, nth0(NumCol1,B,Col1), nth0(NumL1,Col1,X1),X1==Player,
+                NumCol2 is NumCol1+1, NumL2 is NumL1-1, nth0(NumCol2,B,Col2), nth0(NumL2,Col2,X2),X2==Player,
+                ((NumCol2==6); (NumL2==0);(NumCol3 is NumCol2+1, NumL3 is NumL2-1, nth0(NumCol3,B,Col3), nth0(NumL3,Col3,X3),X3\==Player)),
+                Id is 400+NumCol*10+NumL.
+
+diagMont3Right(B,Player,Id,NumCol,NumL):- nth0(NumCol,B,Col), nth0(NumL,Col,Head),Head==Player,
+                ((NumCol==0); (NumL==5);(NumCol0 is NumCol-1, NumL0 is NumL+1, nth0(NumCol0,B,Col0), nth0(NumL0,Col0,X0),X0\==Player)),
+    			NumCol1 is NumCol+1, NumL1 is NumL-1, nth0(NumCol1,B,Col1), nth0(NumL1,Col1,X1),X1==Player,
+                NumCol2 is NumCol1+1, NumL2 is NumL1-1, nth0(NumCol2,B,Col2), nth0(NumL2,Col2,X2),X2==Player,
+                NumCol3 is NumCol2+1, NumL3 is NumL2-1, nth0(NumCol3,B,Col3), nth0(NumL3,Col3,X3),X3=='_',
+                Id is 400+NumCol*10+NumL.
+
+diagMont2Left(B,Player,Id,NumCol,NumL):- nth0(NumCol,B,Col), nth0(NumL,Col,Head),Head==Player,
+                NumCol0 is NumCol-1, NumL0 is NumL+1, nth0(NumCol0,B,Col0), nth0(NumL0,Col0,X0),X0=='_',
+    			NumCol1 is NumCol+1, NumL1 is NumL-1, nth0(NumCol1,B,Col1), nth0(NumL1,Col1,X1),X1==Player,
+                ((NumCol1==6); (NumL1==0);(NumCol2 is NumCol1+1, NumL2 is NumL1-1, nth0(NumCol2,B,Col2), nth0(NumL2,Col2,X2),X2\==Player)),
+                Id is 400+NumCol*10+NumL.
+
+diagMont2Right(B,Player,Id,NumCol,NumL):- nth0(NumCol,B,Col), nth0(NumL,Col,Head),Head==Player,
+                ((NumCol==0); (NumL==5);(NumCol0 is NumCol-1, NumL0 is NumL+1, nth0(NumCol0,B,Col0), nth0(NumL0,Col0,X0),X0\==Player)),
+    			NumCol1 is NumCol+1, NumL1 is NumL-1, nth0(NumCol1,B,Col1), nth0(NumL1,Col1,X1),X1==Player,
+                NumCol2 is NumCol1+1, NumL2 is NumL1-1, nth0(NumCol2,B,Col2), nth0(NumL2,Col2,X2),X2=='_',
+                Id is 400+NumCol*10+NumL.
+
+% SÃ©rie de 1 jeton avec 1 posibilitÃ© Ã  droite
+any1_right(B,Player,Id,NumCol,NumL) :- NumL\==5,nth0(NumCol,B,Col), nth0(NumL,Col,Head), Head==Player,
+        (NumCol==6;(NumC0 is NumCol+1, nth0(NumC0,B,Col0),nth0(NumL,Col0,Down), Down\==Player)),
+        NumL0 is NumL+1,nth0(NumL0,Col,Right),Right=='_',
+        Id is 500+NumCol*10+NumL.
+	
+% SÃ©rie de 1 jeton avec 1 posibilitÃ© Ã  gauche
+any1_left(B,Player,Id,NumCol,NumL) :- NumL\==0,nth0(NumCol,B,Col), nth0(NumL,Col,Head), Head==Player,
+        (NumCol==6;(NumC0 is NumCol+1, nth0(NumC0,B,Col0),nth0(NumL,Col0,Down), Down\==Player)),
+    	 NumL1 is NumL-1,nth0(NumL1,Col,Left), Left=='_',
+        Id is 600+NumCol*10+NumL.
+	
+% SÃ©rie de 1 jeton avec 1 posibilitÃ© Ã  droite en haut
+any1_upRight(B,Player,Id,NumCol,NumL) :- NumL\==5,nth0(NumCol,B,Col), nth0(NumL,Col,Head), Head==Player,
+        (NumCol==6;(NumC0 is NumCol+1, nth0(NumC0,B,Col0),nth0(NumL,Col0,Down), Down\==Player)),
+        NumL0 is NumL+1, NumC1 is NumCol-1, nth0(NumC1,B,Col1), nth0(NumL0,Col1, UpRight), UpRight=='_',
+        ((NumCol==6);(NumL==0);(NumL1 is NumL-1, NumC2 is NumCol+1, nth0(NumC2,B,Col2), nth0(NumL1,Col2, DownLeft), DownLeft\==Player)),
+    	Id is 700+NumCol*10+NumL.
+	
+% SÃ©rie de 1 jeton avec 1 posibilitÃ© Ã  gauche en haut
+any1_upLeft(B,Player,Id,NumCol,NumL) :- NumL\==0,nth0(NumCol,B,Col), nth0(NumL,Col,Head), Head==Player,
+        (NumCol==6;(NumC0 is NumCol+1, nth0(NumC0,B,Col0),nth0(NumL,Col0,Down), Down\==Player)),
+        NumL0 is NumL-1, NumC1 is NumCol-1, nth0(NumC1,B,Col1), nth0(NumL0,Col1, UpLeft), UpLeft=='_',
+        ((NumCol==6);(NumL==5);(NumL1 is NumL+1, NumC2 is NumCol+1, nth0(NumC2,B,Col2), nth0(NumL1,Col2, DownRight), DownRight\==Player)),
+    	Id is 800+NumCol*10+NumL.
+	
+% SÃ©rie de 1 jeton avec 1 posibilitÃ© Ã  droite en bas
+any1_downRight(B,Player,Id,NumCol,NumL) :- numL\==5,nth0(NumCol,B,Col), nth0(NumL,Col,Head), Head==Player,
+        (NumCol==6;(NumC0 is NumCol+1, nth0(NumC0,B,Col0),nth0(NumL,Col0,Down), Down\==Player)),
+    	(NumL1==5;(NumL1 is NumL+1, nth0(NumL1,Col0, DownRight), DownRight=='_')),
+    	Id is 900+NumCol*10+NumL.
+	
+% SÃ©rie de 1 jeton avec 1 posibilitÃ© Ã  gauche en bas
+any1_downLeft(B,Player,Id,NumCol,NumL) :- numL\==0,nth0(NumCol,B,Col), nth0(NumL,Col,Head), Head==Player,
+        (NumCol==6;(NumC0 is NumCol+1, nth0(NumC0,B,Col0),nth0(NumL,Col0,Down), Down\==Player)),
+    	NumL1 is NumL-1, nth0(NumL1,Col0, DownLeft), DownLeft=='_',
+    	Id is 1000+NumCol*10+NumL.
+	
+% SÃ©rie de 1 jeton avec 1 posibilitÃ© en haut
+any1_up(B,Player,Id,NumCol,NumL) :- nth0(NumCol,B,Col), nth0(NumL,Col,Head), Head==Player,
+        (NumCol==6;(NumC0 is NumCol+1, nth0(NumC0,B,Col0),nth0(NumL,Col0,Down), Down\==Player)),
+    	NumC1 is NumCol-1, nth0(NumC1,B,Col1),nth0(NumL,Col1,Up), Up=='_',
+    	Id is 1100+NumCol*10+NumL.
+
+group3(B,Player,Id):- vert3(B,Player,Id,,).
+group3(B,Player,Id):- hor3Left(B,Player,Id,,).
+group3(B,Player,Id):- hor3Right(B,Player,Id,,).
+group3(B,Player,Id):- diagDesc3Left(B,Player,Id,,).
+group3(B,Player,Id):- diagDesc3Right(B,Player,Id,,).
+group3(B,Player,Id):- diagMont3Left(B,Player,Id,,).
+group3(B,Player,Id):- diagMont3Right(B,Player,Id,,).
+
+countGroup3(B,Player,Nb) :- setof(X,group3(B,Player,X),L), length(L,Nb).
+
+group2(B,Player,Id):- vert2(B,Player,Id,,).
+group2(B,Player,Id):- hor2Left(B,Player,Id,,).
+group2(B,Player,Id):- hor2Right(B,Player,Id,,).
+group2(B,Player,Id):- diagDesc2Left(B,Player,Id,,).
+group2(B,Player,Id):- diagDesc2Right(B,Player,Id,,).
+group2(B,Player,Id):- diagMont2Left(B,Player,Id,,).
+group2(B,Player,Id):- diagMont2Right(B,Player,Id,,).
+
+countGroup2(B,Player,Nb) :- setof(X,group2(B,Player,X),L), length(L,Nb).
+
+group1(B,Player,Id):- any1_right(B,Player,Id,,).
+group1(B,Player,Id):- any1_left(B,Player,Id,,).
+group1(B,Player,Id):- any1_upRight(B,Player,Id,,).
+group1(B,Player,Id):- any1_upLeft(B,Player,Id,,).
+group1(B,Player,Id):- any1_downRight(B,Player,Id,,).
+group1(B,Player,Id):- any1_downLeft(B,Player,Id,,).
+group1(B,Player,Id):- any1_up(B,Player,Id,,).
+
+countGroup1(B,Player,Nb) :- setof(X,group1(B,Player,X),L), length(L,Nb).
+
+value1(B,Player,Value) :- countGroup3(B,Player,NbGroup3), countGroup2(B,Player,NbGroup2), Value is NbGroup31000+NbGroup210.
+
+% Verifie si on prochain coup peut etre gagnant, renvoie false sinon
+winMove(_, _, [], _):-false.
+winMove(Player, Board, [Move|_], Move):- move(Board,Move,NewB,Player),winner(NewB,Player),!.
+winMove(Player, Board, [_|Moves], WinMove):- winMove(Player,Board,Moves,WinMove).
+
